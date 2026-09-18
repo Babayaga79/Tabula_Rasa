@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>App Control</title>
+  
+  <!-- Configurazione iOS Web App / PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Control Center">
+  <meta name="theme-color" content="#0a0a0c">
+  
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='128' fill='%23111827'/%3E%3Ccircle cx='256' cy='256' r='180' fill='none' stroke='%2338bdf8' stroke-width='32'/%3E%3Cpath d='M256 120v140l100 60' stroke='%2338bdf8' stroke-width='28' stroke-linecap='round'/%3E%3C/svg%3E">
+
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --card-bg: rgba(25, 33, 50, 0.65);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --success: #10b981;
+      --success-hover: #059669;
+      --primary: #3b82f6;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif;
+      background: radial-gradient(circle at top, #172554 0%, var(--bg) 60%);
+      min-height: 100vh;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: env(safe-area-inset-top, 20px) 20px env(safe-area-inset-bottom, 24px) 20px;
+    }
+
+    header {
+      text-align: center;
+      padding: 24px 0 10px;
+    }
+
+    .app-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--card-border);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #6b7280;
+    }
+
+    .status-active .status-dot {
+      background: var(--success);
+      box-shadow: 0 0 12px var(--success);
+    }
+    .status-active {
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+
+    .status-blocked .status-dot {
+      background: var(--danger);
+      box-shadow: 0 0 12px var(--danger);
+    }
+    .status-blocked {
+      color: #f87171;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 20px;
+      max-width: 380px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .action-btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 20px;
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 1.2px;
+      cursor: pointer;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s;
+    }
+
+    .action-btn:active {
+      transform: scale(0.96);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-kill {
+      background: linear-gradient(145deg, #b91c1c, #7f1d1d);
+      color: #fff;
+      border-color: rgba(239, 68, 68, 0.4);
+      box-shadow: 0 14px 34px rgba(220, 38, 38, 0.3);
+    }
+
+    .btn-reactivate {
+      background: linear-gradient(145deg, #059669, #065f46);
+      color: #fff;
+      border-color: rgba(16, 185, 129, 0.4);
+      box-shadow: 0 14px 34px rgba(16, 185, 129, 0.3);
+    }
+
+    .btn-subtitle {
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+      opacity: 0.8;
+      margin-top: 6px;
+      text-transform: uppercase;
+    }
+
+    .card-settings {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 16px;
+      margin-top: 10px;
+    }
+
+    .card-settings-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .settings-content {
+      display: none;
+      margin-top: 14px;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .settings-content.open {
+      display: flex;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-left: 2px;
+    }
+
+    input {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 13px;
+      font-family: monospace;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+    }
+
+    .btn-save-settings {
+      background: var(--primary);
+      border: none;
+      border-radius: 12px;
+      padding: 10px;
+      color: white;
+      font-weight: 600;
+      font-size: 13px;
+      margin-top: 4px;
+      cursor: pointer;
+    }
+
+    .log-box {
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="app-title">Remote Kill-Switch</div>
+    <div id="statusBadge" class="status-badge" onclick="checkCurrentStatus()">
+      <div class="status-dot"></div>
+      <span id="statusText">Verifica in corso...</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- Tasto TABULA RASA -->
+    <button id="btnKill" class="action-btn btn-kill" onclick="confirmKill()">
+      <span>TABULA RASA</span>
+      <span class="btn-subtitle">Inibisci esecuzione programmi</span>
+    </button>
+
+    <!-- Tasto RIATTIVA -->
+    <button id="btnReactivate" class="action-btn btn-reactivate" onclick="confirmReactivate()">
+      <span>RIATTIVA</span>
+      <span class="btn-subtitle">Consenti avvio regolare</span>
+    </button>
+
+    <!-- Pannello Chiavi e Configurazione -->
+    <div class="card-settings">
+      <div class="card-settings-header" onclick="toggleSettings()">
+        <span>⚙️ Configurazione Gist</span>
+        <span id="settingsToggleIcon">▼</span>
+      </div>
+      <div id="settingsContent" class="settings-content">
+        <div class="form-group">
+          <label for="gistId">Gist ID</label>
+          <input type="text" id="gistId" placeholder="es. 4f9b8c7e6a5d...">
+        </div>
+        <div class="form-group">
+          <label for="githubToken">GitHub Token (Personal Access Token)</label>
+          <input type="password" id="githubToken" placeholder="ghp_xxxxxxxxxxxxxxxxx">
+        </div>
+        <div class="form-group">
+          <label for="gistFilename">Nome File nel Gist</label>
+          <input type="text" id="gistFilename" value="status.txt">
+        </div>
+        <button class="btn-save-settings" onclick="saveSettings()">Salva Configurazione</button>
+      </div>
+    </div>
+
+    <div id="logBox" class="log-box">Tocca lo stato in alto per aggiornare</div>
+  </main>
+
+  <script>
+    // Le due stringhe cifrate esatte calcolate con la chiave AES-256
+    const CIPHER_ACTIVE = "mnurmtL68I7HjqexI2SlZA==";
+    const CIPHER_BLOCKED = "MjBRZM5SzLKYOz1CL8TtNQ==";
+
+    // Caricamento configurazione locale
+    function loadSettings() {
+      document.getElementById('gistId').value = localStorage.getItem('GIST_ID') || '';
+      document.getElementById('githubToken').value = localStorage.getItem('GITHUB_TOKEN') || '';
+      document.getElementById('gistFilename').value = localStorage.getItem('GIST_FILENAME') || 'status.txt';
+    }
+
+    function saveSettings() {
+      const gistId = document.getElementById('gistId').value.trim();
+      const token = document.getElementById('githubToken').value.trim();
+      const filename = document.getElementById('gistFilename').value.trim() || 'status.txt';
+
+      localStorage.setItem('GIST_ID', gistId);
+      localStorage.setItem('GITHUB_TOKEN', token);
+      localStorage.setItem('GIST_FILENAME', filename);
+
+      showLog("Configurazione salvata con successo!");
+      toggleSettings();
+      checkCurrentStatus();
+    }
+
+    function toggleSettings() {
+      const content = document.getElementById('settingsContent');
+      content.classList.toggle('open');
+      document.getElementById('settingsToggleIcon').innerText = content.classList.contains('open') ? '▲' : '▼';
+    }
+
+    function showLog(msg) {
+      document.getElementById('logBox').innerText = msg;
+    }
+
+    // Lettura dello stato attuale dal Gist
+    async function checkCurrentStatus() {
+      const gistId = localStorage.getItem('GIST_ID');
+      const filename = localStorage.getItem('GIST_FILENAME') || 'status.txt';
+      const token = localStorage.getItem('GITHUB_TOKEN');
+
+      if (!gistId) {
+        setStatusUI("non_configurato", "Configura Gist");
+        toggleSettings();
+        return;
+      }
+
+      setStatusUI("loading", "Controllo...");
+
+      try {
+        const headers = { 'Accept': 'application/vnd.github+json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch(`https://api.github.com/gists/${gistId}?t=${Date.now()}`, { headers });
+        if (!res.ok) throw new Error("Errore GitHub: " + res.status);
+
+        const data = await res.json();
+        const fileObj = data.files[filename];
+
+        if (!fileObj) {
+          setStatusUI("error", "File non trovato");
+          return;
+        }
+
+        const content = (fileObj.content || '').trim();
+
+        if (content === CIPHER_ACTIVE) {
+          setStatusUI("active", "ATTIVO (Programmi OK)");
+        } else if (content === CIPHER_BLOCKED) {
+          setStatusUI("blocked", "TABULA RASA ATTIVA");
+        } else {
+          setStatusUI("unknown", "Stato Sconosciuto");
+        }
+      } catch (err) {
+        setStatusUI("error", "Errore Rete/Token");
+        showLog(err.message);
+      }
+    }
+
+    function setStatusUI(state, text) {
+      const badge = document.getElementById('statusBadge');
+      badge.className = "status-badge";
+
+      if (state === 'active') badge.classList.add('status-active');
+      else if (state === 'blocked') badge.classList.add('status-blocked');
+
+      document.getElementById('statusText').innerText = text;
+    }
+
+    // Scrittura sul Gist tramite GitHub API (PATCH)
+    async function updateGistContent(newContent, successMessage) {
+      const gistId = localStorage.getItem('GIST_ID');
+      const token = localStorage.getItem('GITHUB_TOKEN');
+      const filename = localStorage.getItem('GIST_FILENAME') || 'status.txt';
+
+      if (!gistId || !token) {
+        alert("Prima di procedere compila Gist ID e GitHub Token nelle impostazioni!");
+        toggleSettings();
+        return;
+      }
+
+      setButtonsDisabled(true);
+      showLog("Invio comando a GitHub in corso...");
+
+      try {
+        const payload = {
+          files: {
+            [filename]: {
+              content: newContent
+            }
+          }
+        };
+
+        const res = await fetch(`https://api.github.com/gists/${gistId}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || ("HTTP " + res.status));
+        }
+
+        showLog(successMessage);
+        await checkCurrentStatus();
+      } catch (err) {
+        alert("Errore durante l'aggiornamento: " + err.message);
+        showLog("Errore: " + err.message);
+      } finally {
+        setButtonsDisabled(false);
+      }
+    }
+
+    function confirmKill() {
+      const ok = confirm("ATTENZIONE!\n\nVuoi eseguire TABULA RASA?\nI programmi non partiranno più al prossimo avvio.");
+      if (ok) {
+        updateGistContent(CIPHER_BLOCKED, "TABULA RASA ATTIVATA con successo!");
+      }
+    }
+
+    function confirmReactivate() {
+      const ok = confirm("Vuoi RIATTIVARE i programmi?");
+      if (ok) {
+        updateGistContent(CIPHER_ACTIVE, "Programmi RIATTIVATI con successo!");
+      }
+    }
+
+    function setButtonsDisabled(disabled) {
+      document.getElementById('btnKill').disabled = disabled;
+      document.getElementById('btnReactivate').disabled = disabled;
+    }
+
+    // Avvio
+    loadSettings();
+    checkCurrentStatus();
+  </script>
+</body>
+</html>
